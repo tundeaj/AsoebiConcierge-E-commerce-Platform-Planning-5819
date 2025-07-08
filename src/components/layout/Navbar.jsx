@@ -6,7 +6,7 @@ import SafeIcon from '../../common/SafeIcon';
 import { useAuth } from '../../hooks/useAuth';
 import { useCurrency } from '../../hooks/useCurrency';
 
-const { FiMenu, FiX, FiUser, FiLogIn, FiShoppingBag, FiCalendar, FiHome, FiInfo, FiMail, FiUsers, FiStore, FiSettings, FiBell, FiDollarSign } = FiIcons;
+const { FiMenu, FiX, FiUser, FiLogIn, FiShoppingBag, FiCalendar, FiHome, FiInfo, FiMail, FiUsers, FiStore, FiSettings, FiBell, FiDollarSign, FiLogOut } = FiIcons;
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,7 +14,7 @@ const Navbar = () => {
   const [isCurrencyMenuOpen, setIsCurrencyMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, loading, signOut } = useAuth();
+  const { user, loading, signOut, userProfile } = useAuth();
   const { currencies, currentCurrency, changeCurrency } = useCurrency();
 
   const navItems = [
@@ -43,9 +43,14 @@ const Navbar = () => {
       { path: '/admin-dashboard', label: 'Admin Panel', icon: FiSettings },
       { path: '/dashboard', label: 'Dashboard', icon: FiUser },
       { path: '/profile/me', label: 'My Profile', icon: FiUser },
+    ],
+    guest: [
+      { path: '/dashboard', label: 'My Dashboard', icon: FiUser },
+      { path: '/profile/me', label: 'My Profile', icon: FiUser },
+      { path: '/settings', label: 'Settings', icon: FiSettings },
     ]
   };
-  
+
   const handleCurrencyChange = async (code) => {
     await changeCurrency(code);
     setIsCurrencyMenuOpen(false);
@@ -55,18 +60,18 @@ const Navbar = () => {
     const { error } = await signOut();
     if (!error) {
       setIsUserMenuOpen(false);
-      navigate('/login');
+      navigate('/');
     }
   };
 
   const isActive = (path) => location.pathname === path;
 
-  // Mock user data if authenticated - replace with actual auth state
+  // Get user data
   const userData = user ? {
-    name: user.user_metadata?.full_name || 'User',
+    name: user.user_metadata?.full_name || userProfile?.full_name || 'User',
     email: user.email,
-    role: user.user_metadata?.role || 'host',
-    avatar: user.user_metadata?.avatar_url || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face',
+    role: user.user_metadata?.role || userProfile?.role || 'guest',
+    avatar: user.user_metadata?.avatar_url || userProfile?.avatar_url || 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face',
     notifications: 3
   } : null;
 
@@ -111,14 +116,13 @@ const Navbar = () => {
           <div className="hidden md:flex items-center space-x-4">
             {/* Currency Selector */}
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setIsCurrencyMenuOpen(!isCurrencyMenuOpen)}
                 className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 transition-colors"
               >
                 <SafeIcon icon={FiDollarSign} className="w-4 h-4" />
                 <span>{currentCurrency?.code || 'NGN'}</span>
               </button>
-              
               {isCurrencyMenuOpen && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
@@ -131,7 +135,9 @@ const Navbar = () => {
                       key={currency.code}
                       onClick={() => handleCurrencyChange(currency.code)}
                       className={`w-full flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
-                        currentCurrency?.code === currency.code ? 'text-primary-600 font-medium' : 'text-gray-700'
+                        currentCurrency?.code === currency.code
+                          ? 'text-primary-600 font-medium'
+                          : 'text-gray-700'
                       }`}
                     >
                       <span>{currency.name} ({currency.symbol})</span>
@@ -143,8 +149,8 @@ const Navbar = () => {
                 </motion.div>
               )}
             </div>
-            
-            {userData ? (
+
+            {!loading && (userData ? (
               <>
                 {/* Notifications */}
                 <button className="relative p-2 text-gray-600 hover:text-primary-600 transition-colors">
@@ -193,11 +199,11 @@ const Navbar = () => {
                         </Link>
                       ))}
                       <div className="border-t border-gray-200 mt-2 pt-2">
-                        <button 
+                        <button
                           onClick={handleLogout}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
                         >
-                          <SafeIcon icon={FiLogIn} className="w-4 h-4" />
+                          <SafeIcon icon={FiLogOut} className="w-4 h-4" />
                           <span>Logout</span>
                         </button>
                       </div>
@@ -222,7 +228,7 @@ const Navbar = () => {
                   <span>Join Now</span>
                 </Link>
               </>
-            )}
+            ))}
           </div>
 
           {/* Mobile menu button */}
@@ -261,7 +267,7 @@ const Navbar = () => {
                 <span>{item.label}</span>
               </Link>
             ))}
-            
+
             {/* Currency selector for mobile */}
             <div className="border-t border-gray-200 pt-2">
               <div className="px-3 py-2 text-sm text-gray-500 font-medium">Currency</div>
@@ -274,7 +280,9 @@ const Navbar = () => {
                       setIsOpen(false);
                     }}
                     className={`w-full flex items-center justify-between px-2 py-1 rounded-md text-sm ${
-                      currentCurrency?.code === currency.code ? 'bg-primary-50 text-primary-600 font-medium' : 'text-gray-700 hover:bg-gray-50'
+                      currentCurrency?.code === currency.code
+                        ? 'bg-primary-50 text-primary-600 font-medium'
+                        : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
                     <span>{currency.name} ({currency.symbol})</span>
@@ -286,7 +294,7 @@ const Navbar = () => {
               </div>
             </div>
 
-            {userData ? (
+            {!loading && (userData ? (
               <>
                 <div className="border-t border-gray-200 pt-2">
                   <div className="flex items-center px-3 py-2">
@@ -315,7 +323,7 @@ const Navbar = () => {
                     onClick={handleLogout}
                     className="flex items-center space-x-2 px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md w-full mt-2"
                   >
-                    <SafeIcon icon={FiLogIn} className="w-5 h-5" />
+                    <SafeIcon icon={FiLogOut} className="w-5 h-5" />
                     <span>Logout</span>
                   </button>
                 </div>
@@ -339,7 +347,7 @@ const Navbar = () => {
                   <span>Join Now</span>
                 </Link>
               </div>
-            )}
+            ))}
           </div>
         </motion.div>
       )}

@@ -4,43 +4,140 @@ import { supabase } from '../lib/supabase'
 export const authService = {
   // Sign up new user
   async signUp(email, password, userData = {}) {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: userData
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: userData.full_name || `${userData.firstName} ${userData.lastName}`,
+            role: userData.role || 'guest',
+            phone: userData.phone,
+            ...userData
+          }
+        }
+      })
+      
+      if (error) throw error
+      
+      // If user role is vendor, create vendor profile
+      if (userData.role === 'vendor' && data.user) {
+        await this.createVendorProfile(data.user.id, userData)
       }
-    })
-    return { data, error }
+      
+      return { data, error: null }
+    } catch (error) {
+      console.error('Sign up error:', error)
+      return { data: null, error }
+    }
   },
 
   // Sign in user
   async signIn(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
-    return { data, error }
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+      
+      if (error) throw error
+      return { data, error: null }
+    } catch (error) {
+      console.error('Sign in error:', error)
+      return { data: null, error }
+    }
   },
 
   // Sign out user
   async signOut() {
-    const { error } = await supabase.auth.signOut()
-    return { error }
+    try {
+      const { error } = await supabase.auth.signOut()
+      return { error }
+    } catch (error) {
+      console.error('Sign out error:', error)
+      return { error }
+    }
   },
 
   // Get current user
   async getCurrentUser() {
-    const { data: { user }, error } = await supabase.auth.getUser()
-    return { user, error }
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      return { user, error }
+    } catch (error) {
+      console.error('Get current user error:', error)
+      return { user: null, error }
+    }
   },
 
   // Update user profile
   async updateProfile(updates) {
-    const { data, error } = await supabase.auth.updateUser({
-      data: updates
-    })
-    return { data, error }
+    try {
+      const { data, error } = await supabase.auth.updateUser({
+        data: updates
+      })
+      return { data, error }
+    } catch (error) {
+      console.error('Update profile error:', error)
+      return { data: null, error }
+    }
+  },
+
+  // Create vendor profile
+  async createVendorProfile(userId, vendorData) {
+    try {
+      const { data, error } = await supabase
+        .from('vendor_profiles')
+        .insert([{
+          user_id: userId,
+          business_name: vendorData.businessName || vendorData.business_name,
+          business_description: vendorData.businessDescription || vendorData.description,
+          business_address: vendorData.businessAddress || vendorData.address,
+          business_phone: vendorData.businessPhone || vendorData.phone,
+          business_email: vendorData.businessEmail || vendorData.email,
+          business_type: vendorData.businessType || vendorData.business_type,
+          business_category: vendorData.businessCategory || vendorData.business_category,
+          verification_status: 'pending'
+        }])
+        .select()
+
+      return { data, error }
+    } catch (error) {
+      console.error('Create vendor profile error:', error)
+      return { data: null, error }
+    }
+  },
+
+  // Get user profile
+  async getUserProfile(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+
+      return { data, error }
+    } catch (error) {
+      console.error('Get user profile error:', error)
+      return { data: null, error }
+    }
+  },
+
+  // Get vendor profile
+  async getVendorProfile(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('vendor_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+
+      return { data, error }
+    } catch (error) {
+      console.error('Get vendor profile error:', error)
+      return { data: null, error }
+    }
   }
 }
 
@@ -88,43 +185,190 @@ export const currencyService = {
   }
 }
 
-// Mock services for all other functionality
+// Event Service
 export const eventService = {
   async createEvent(eventData) {
-    return { data: [{ id: 1, ...eventData }], error: null }
+    try {
+      const { data: user } = await supabase.auth.getUser()
+      const { data, error } = await supabase
+        .from('events')
+        .insert([{
+          user_id: user?.user?.id,
+          ...eventData,
+          created_at: new Date().toISOString()
+        }])
+        .select()
+      
+      return { data, error }
+    } catch (error) {
+      console.error('Create event error:', error)
+      return { data: null, error }
+    }
   },
+
   async getEvents(filters = {}) {
-    return { data: [], error: null }
+    try {
+      const { data: user } = await supabase.auth.getUser()
+      let query = supabase
+        .from('events')
+        .select('*')
+        .eq('user_id', user?.user?.id)
+      
+      // Apply filters
+      if (filters.status) {
+        query = query.eq('status', filters.status)
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false })
+      return { data, error }
+    } catch (error) {
+      console.error('Get events error:', error)
+      return { data: [], error }
+    }
   },
+
   async getEvent(id) {
-    return { data: null, error: null }
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', id)
+        .single()
+      
+      return { data, error }
+    } catch (error) {
+      console.error('Get event error:', error)
+      return { data: null, error }
+    }
   },
+
   async updateEvent(id, updates) {
-    return { data: [updates], error: null }
+    try {
+      const { data, error } = await supabase
+        .from('events')
+        .update(updates)
+        .eq('id', id)
+        .select()
+      
+      return { data, error }
+    } catch (error) {
+      console.error('Update event error:', error)
+      return { data: null, error }
+    }
   },
+
   async deleteEvent(id) {
-    return { data: null, error: null }
+    try {
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', id)
+      
+      return { error }
+    } catch (error) {
+      console.error('Delete event error:', error)
+      return { error }
+    }
   }
 }
 
+// Guest Service
 export const guestService = {
   async createGuest(guestData) {
-    return { data: [{ id: Date.now(), ...guestData }], error: null }
+    try {
+      const { data, error } = await supabase
+        .from('guests')
+        .insert([{
+          ...guestData,
+          created_at: new Date().toISOString()
+        }])
+        .select()
+      
+      return { data, error }
+    } catch (error) {
+      console.error('Create guest error:', error)
+      return { data: null, error }
+    }
   },
+
   async getEventGuests(eventId) {
-    return { data: [], error: null }
+    try {
+      const { data, error } = await supabase
+        .from('guests')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: false })
+      
+      return { data, error }
+    } catch (error) {
+      console.error('Get event guests error:', error)
+      return { data: [], error }
+    }
   },
+
   async getGuest(id) {
-    return { data: null, error: null }
+    try {
+      const { data, error } = await supabase
+        .from('guests')
+        .select('*')
+        .eq('id', id)
+        .single()
+      
+      return { data, error }
+    } catch (error) {
+      console.error('Get guest error:', error)
+      return { data: null, error }
+    }
   },
+
   async updateGuest(id, updates) {
-    return { data: [updates], error: null }
+    try {
+      const { data, error } = await supabase
+        .from('guests')
+        .update(updates)
+        .eq('id', id)
+        .select()
+      
+      return { data, error }
+    } catch (error) {
+      console.error('Update guest error:', error)
+      return { data: null, error }
+    }
   },
+
   async deleteGuest(id) {
-    return { data: null, error: null }
+    try {
+      const { error } = await supabase
+        .from('guests')
+        .delete()
+        .eq('id', id)
+      
+      return { error }
+    } catch (error) {
+      console.error('Delete guest error:', error)
+      return { error }
+    }
   },
+
   async importGuests(guests, eventId) {
-    return { data: guests.map((g, i) => ({ id: i, ...g })), error: null }
+    try {
+      // Add event_id and created_at to each guest
+      const guestsWithEventId = guests.map(guest => ({
+        ...guest,
+        event_id: eventId,
+        created_at: new Date().toISOString()
+      }))
+      
+      const { data, error } = await supabase
+        .from('guests')
+        .insert(guestsWithEventId)
+        .select()
+      
+      return { data, error }
+    } catch (error) {
+      console.error('Import guests error:', error)
+      return { data: null, error }
+    }
   }
 }
 

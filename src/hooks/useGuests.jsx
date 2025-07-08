@@ -82,6 +82,7 @@ export const useGuests = (eventId) => {
             // Map data to our format
             const guestsData = jsonData.slice(1).map(row => {
               const guest = {}
+              
               headers.forEach((header, index) => {
                 const key = header.toLowerCase().replace(/\s+/g, '_')
                 
@@ -109,6 +110,7 @@ export const useGuests = (eventId) => {
             
             // Update local state
             setGuests(prev => [...prev, ...data])
+            
             resolve({ data, error: null })
           } catch (err) {
             reject({ data: null, error: err })
