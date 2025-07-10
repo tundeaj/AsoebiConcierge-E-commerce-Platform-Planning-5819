@@ -65,7 +65,6 @@ export const useGuests = (eventId) => {
   const importGuestsFromExcel = async (file) => {
     try {
       const reader = new FileReader()
-      
       return new Promise((resolve, reject) => {
         reader.onload = async (e) => {
           try {
@@ -84,7 +83,6 @@ export const useGuests = (eventId) => {
               const guest = {}
               headers.forEach((header, index) => {
                 const key = header.toLowerCase().replace(/\s+/g, '_')
-                
                 // Map Excel columns to our database fields
                 if (key === 'name' || key === 'email' || key === 'phone' || key === 'location') {
                   guest[key] = row[index] || '' // Handle undefined values
@@ -99,26 +97,25 @@ export const useGuests = (eventId) => {
               if (!guest.name) {
                 throw new Error('Name is required for all guests')
               }
-              
               return guest
             })
-            
+
             // Import to database
-            const { data, error } = await guestService.importGuests(guestsData, eventId)
-            if (error) throw error
+            const { data: importedData, error: importError } = await guestService.importGuests(guestsData, eventId)
+            if (importError) throw importError
             
             // Update local state
-            setGuests(prev => [...prev, ...data])
-            resolve({ data, error: null })
+            setGuests(prev => [...prev, ...importedData])
+            resolve({ data: importedData, error: null })
           } catch (err) {
             reject({ data: null, error: err })
           }
         }
-        
+
         reader.onerror = () => {
           reject({ data: null, error: new Error('Failed to read file') })
         }
-        
+
         reader.readAsArrayBuffer(file)
       })
     } catch (err) {
@@ -137,17 +134,17 @@ export const useGuests = (eventId) => {
         'RSVP Status': guest.rsvp_status || 'pending',
         'Asoebi Status': guest.asoebi_status || 'not_ordered'
       }))
-      
+
       // Create worksheet
       const worksheet = XLSX.utils.json_to_sheet(exportData)
-      
+
       // Create workbook
       const workbook = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Guests')
-      
+
       // Generate file and download
       XLSX.writeFile(workbook, `Event_${eventId}_Guests.xlsx`)
-      
+
       return { error: null }
     } catch (err) {
       return { error: err }

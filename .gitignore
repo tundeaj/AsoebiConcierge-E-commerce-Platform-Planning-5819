@@ -30,7 +30,7 @@ dist-ssr
 .env.test.local
 .env.production.local
 
-# Legacy JS files that should be JSX
+# Ignore JS versions of JSX files to prevent duplicates
 src/hooks/useAuth.js
 src/hooks/useCurrency.js
 src/hooks/useGuests.js

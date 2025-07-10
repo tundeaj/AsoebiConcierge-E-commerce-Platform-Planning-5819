@@ -44,7 +44,9 @@ export const useGuests = (eventId) => {
     try {
       const { data, error } = await guestService.updateGuest(id, updates)
       if (error) throw error
-      setGuests(prev => prev.map(guest => guest.id === id ? { ...guest, ...data[0] } : guest))
+      setGuests(prev => prev.map(guest => 
+        guest.id === id ? { ...guest, ...data[0] } : guest
+      ))
       return { data, error: null }
     } catch (err) {
       return { data: null, error: err }
@@ -65,12 +67,11 @@ export const useGuests = (eventId) => {
   const importGuestsFromExcel = async (file) => {
     try {
       const reader = new FileReader()
-      
       return new Promise((resolve, reject) => {
         reader.onload = async (e) => {
           try {
-            const data = new Uint8Array(e.target.result)
-            const workbook = XLSX.read(data, { type: 'array' })
+            const arrayBuffer = new Uint8Array(e.target.result)
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' })
             const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
             
             // Convert to JSON with headers
@@ -82,10 +83,8 @@ export const useGuests = (eventId) => {
             // Map data to our format
             const guestsData = jsonData.slice(1).map(row => {
               const guest = {}
-              
               headers.forEach((header, index) => {
                 const key = header.toLowerCase().replace(/\s+/g, '_')
-                
                 // Map Excel columns to our database fields
                 if (key === 'name' || key === 'email' || key === 'phone' || key === 'location') {
                   guest[key] = row[index] || '' // Handle undefined values
@@ -100,27 +99,25 @@ export const useGuests = (eventId) => {
               if (!guest.name) {
                 throw new Error('Name is required for all guests')
               }
-              
               return guest
             })
-            
+
             // Import to database
-            const { data, error } = await guestService.importGuests(guestsData, eventId)
-            if (error) throw error
-            
+            const { data: importedData, error: importError } = await guestService.importGuests(guestsData, eventId)
+            if (importError) throw importError
+
             // Update local state
-            setGuests(prev => [...prev, ...data])
-            
-            resolve({ data, error: null })
+            setGuests(prev => [...prev, ...importedData])
+            resolve({ data: importedData, error: null })
           } catch (err) {
             reject({ data: null, error: err })
           }
         }
-        
+
         reader.onerror = () => {
           reject({ data: null, error: new Error('Failed to read file') })
         }
-        
+
         reader.readAsArrayBuffer(file)
       })
     } catch (err) {
@@ -139,17 +136,17 @@ export const useGuests = (eventId) => {
         'RSVP Status': guest.rsvp_status || 'pending',
         'Asoebi Status': guest.asoebi_status || 'not_ordered'
       }))
-      
+
       // Create worksheet
       const worksheet = XLSX.utils.json_to_sheet(exportData)
-      
+
       // Create workbook
       const workbook = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(workbook, worksheet, 'Guests')
-      
+
       // Generate file and download
       XLSX.writeFile(workbook, `Event_${eventId}_Guests.xlsx`)
-      
+
       return { error: null }
     } catch (err) {
       return { error: err }
