@@ -1,73 +1,56 @@
 import { useState, useEffect } from 'react';
+import { linkService } from '../services/linkService';
 import { guestService } from '../services/supabaseService';
 import * as XLSX from 'xlsx';
 
-export const useGuests = (eventId) => {
-  const [guests, setGuests] = useState([]);
-  const [loading, setLoading] = useState(true);
+export const useWhatsAppOnboarding = (eventId) => {
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
+  const [invitationLink, setInvitationLink] = useState(null);
+  const [importStats, setImportStats] = useState({
+    total: 0,
+    success: 0,
+    failed: 0,
+    processing: false
+  });
+  
+  // Generate invitation link on component mount
   useEffect(() => {
     if (eventId) {
-      fetchGuests();
+      generateLink();
     }
   }, [eventId]);
-
-  const fetchGuests = async () => {
+  
+  // Generate a new invitation link
+  const generateLink = async () => {
     try {
       setLoading(true);
-      const { data, error } = await guestService.getEventGuests(eventId);
-      if (error) throw error;
-      setGuests(data || []);
+      
+      // For now, we'll use a simple URL without token verification
+      // In production, use linkService to generate a proper token
+      const link = `${window.location.origin}/#/guest-rsvp/${eventId}`;
+      setInvitationLink(link);
+      
     } catch (err) {
-      setError(err.message);
+      console.error('Error generating link:', err);
+      setError(err.message || 'Failed to generate invitation link');
     } finally {
       setLoading(false);
     }
   };
-
-  const addGuest = async (guestData) => {
+  
+  // Process WhatsApp export file
+  const processWhatsAppExport = async (file) => {
     try {
-      const { data, error } = await guestService.createGuest({
-        ...guestData,
-        event_id: eventId
-      });
-      if (error) throw error;
-      setGuests(prev => [...prev, data[0]]);
-      return { data, error: null };
-    } catch (err) {
-      return { data: null, error: err };
-    }
-  };
-
-  const updateGuest = async (id, updates) => {
-    try {
-      const { data, error } = await guestService.updateGuest(id, updates);
-      if (error) throw error;
-      setGuests(prev => prev.map(guest => guest.id === id ? { ...guest, ...data[0] } : guest));
-      return { data, error: null };
-    } catch (err) {
-      return { data: null, error: err };
-    }
-  };
-
-  const deleteGuest = async (id) => {
-    try {
-      const { error } = await guestService.deleteGuest(id);
-      if (error) throw error;
-      setGuests(prev => prev.filter(guest => guest.id !== id));
-      return { error: null };
-    } catch (err) {
-      return { error: err };
-    }
-  };
-
-  const importGuestsFromExcel = async (file) => {
-    try {
+      setImportStats(prev => ({ ...prev, processing: true }));
+      
+      // Read the Excel/CSV file
       const reader = new FileReader();
+      
       return new Promise((resolve, reject) => {
         reader.onload = async (e) => {
           try {
+            // Parse the file
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
             const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -77,7 +60,7 @@ export const useGuests = (eventId) => {
             
             // Extract headers - if no headers, create default ones
             const headers = jsonData[0] && jsonData[0].length > 0 
-              ? jsonData[0].map(h => String(h).toLowerCase().replace(/\s+/g, '_')) 
+              ? jsonData[0].map(h => String(h).toLowerCase().replace(/\s+/g, '_'))
               : ['name', 'phone'];
             
             // Process WhatsApp contacts - start from row 1 if headers exist, otherwise from row 0
@@ -136,7 +119,7 @@ export const useGuests = (eventId) => {
                 
                 // Create contact object
                 const contact = {
-                  name: name || `Guest ${i + 1}`, // Use placeholder name if missing
+                  name: name || `Guest ${i + 1}`,  // Use placeholder name if missing
                   phone,
                   whatsapp_number: phone,
                   event_id: eventId,
@@ -153,82 +136,55 @@ export const useGuests = (eventId) => {
               }
             }
             
-            // Import to database if we have contacts
+            // Import to database
             if (contacts.length > 0) {
               const { data, error } = await guestService.importGuests(contacts, eventId);
               if (error) throw error;
-              
-              // Refresh the guest list
-              fetchGuests();
             }
             
-            resolve({
-              data: contacts,
-              error: null,
+            setImportStats({
+              total: successCount + failedCount,
+              success: successCount,
+              failed: failedCount,
+              processing: false
+            });
+            
+            resolve({ 
+              success: true, 
               stats: {
                 total: successCount + failedCount,
-                success: successCount,
+                imported: successCount,
                 failed: failedCount
               }
             });
           } catch (err) {
+            setImportStats(prev => ({ ...prev, processing: false }));
             reject(err);
           }
         };
         
-        reader.onerror = () => {
+        reader.onerror = (err) => {
+          setImportStats(prev => ({ ...prev, processing: false }));
           reject(new Error('Failed to read file'));
         };
         
         reader.readAsArrayBuffer(file);
       });
     } catch (err) {
-      console.error('Error importing guests:', err);
+      setImportStats(prev => ({ ...prev, processing: false }));
+      setError(err.message || 'Failed to process WhatsApp export');
       throw err;
     }
   };
-
-  const exportGuestsToExcel = () => {
-    try {
-      // Prepare data for export
-      const exportData = guests.map(guest => ({
-        Name: guest.name,
-        Email: guest.email || '',
-        Phone: guest.phone || '',
-        Location: guest.location || '',
-        'RSVP Status': guest.rsvp_status || 'pending',
-        'Asoebi Status': guest.asoebi_status || 'not_ordered'
-      }));
-
-      // Create worksheet
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      
-      // Create workbook
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Guests');
-      
-      // Generate file and download
-      XLSX.writeFile(workbook, `Event_${eventId}_Guests.xlsx`);
-      
-      return { error: null };
-    } catch (err) {
-      return { error: err };
-    }
-  };
-
-  const refetch = fetchGuests;
-
+  
   return {
-    guests,
     loading,
     error,
-    refetch,
-    addGuest,
-    updateGuest,
-    deleteGuest,
-    importGuestsFromExcel,
-    exportGuestsToExcel
+    invitationLink,
+    importStats,
+    generateLink,
+    processWhatsAppExport
   };
 };
 
-export default useGuests;
+export default useWhatsAppOnboarding;

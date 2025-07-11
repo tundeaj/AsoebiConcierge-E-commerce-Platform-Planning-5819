@@ -123,6 +123,7 @@ const Navbar = () => {
                 <SafeIcon icon={FiDollarSign} className="w-4 h-4" />
                 <span>{currentCurrency?.code || 'NGN'}</span>
               </button>
+
               {isCurrencyMenuOpen && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}

@@ -1,124 +1,73 @@
 import React from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import './App.css';
+import { motion, AnimatePresence } from 'framer-motion';
 
-// Layout Components
-import Navbar from './components/layout/Navbar';
-import Footer from './components/layout/Footer';
-
-// Public Pages
+// Pages
 import Home from './pages/Home';
+import About from './pages/About';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
 import Events from './pages/Events';
 import EventDetails from './pages/EventDetails';
 import Marketplace from './pages/Marketplace';
 import ProductDetails from './pages/ProductDetails';
-import Community from './pages/Community';
-import Profile from './pages/Profile';
-import About from './pages/About';
-import Contact from './pages/Contact';
-import Catalog from './pages/Catalog';
-
-// Auth Pages
-import Login from './pages/Login';
-import Register from './pages/Register';
-
-// Dashboard Pages
-import Dashboard from './pages/Dashboard';
+import VendorProfile from './pages/VendorProfile';
 import VendorDashboard from './pages/VendorDashboard';
+import VendorOnboarding from './pages/VendorOnboarding';
+import Profile from './pages/Profile';
+import Messages from './pages/Messages';
+import Community from './pages/Community';
+import Analytics from './pages/Analytics';
+import Catalog from './pages/Catalog';
+import Contact from './pages/Contact';
+import GuestRSVP from './pages/GuestRSVP';
+import GuestDashboard from './pages/GuestDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import PlannerDashboard from './pages/PlannerDashboard';
+import OrderTracking from './pages/OrderTracking';
 
-// Guest Experience
-import GuestDashboard from './pages/GuestDashboard';
-
-// Vendor Pages
-import VendorOnboarding from './pages/VendorOnboarding';
-import VendorProfile from './pages/VendorProfile';
-
-// Error Boundary Component
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error('App Error:', error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Something went wrong</h1>
-            <p className="text-gray-600 mb-4">Please refresh the page or try again later.</p>
-            <button 
-              onClick={() => window.location.reload()} 
-              className="bg-primary-600 text-white px-4 py-2 rounded-lg"
-            >
-              Refresh Page
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
+// Components
+import Navbar from './components/layout/Navbar';
+import Footer from './components/layout/Footer';
 
 function App() {
   return (
-    <ErrorBoundary>
-      <Router>
-        <div className="min-h-screen bg-gray-50">
-          <Navbar />
-          <motion.main
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
-          >
+    <Router>
+      <div className="min-h-screen flex flex-col">
+        <Navbar />
+        <main className="flex-grow">
+          <AnimatePresence mode="wait">
             <Routes>
-              {/* Public Routes */}
               <Route path="/" element={<Home />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/events" element={<Events />} />
               <Route path="/event/:id" element={<EventDetails />} />
               <Route path="/marketplace" element={<Marketplace />} />
               <Route path="/product/:id" element={<ProductDetails />} />
-              <Route path="/community" element={<Community />} />
-              <Route path="/profile/:userId" element={<Profile />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/catalog" element={<Catalog />} />
-
-              {/* Auth Routes */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-
-              {/* Dashboard Routes */}
-              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/vendor/:vendorId" element={<VendorProfile />} />
               <Route path="/vendor-dashboard" element={<VendorDashboard />} />
+              <Route path="/vendor/onboarding" element={<VendorOnboarding />} />
+              <Route path="/profile/:userId" element={<Profile />} />
+              <Route path="/messages" element={<Messages />} />
+              <Route path="/community" element={<Community />} />
+              <Route path="/analytics" element={<Analytics />} />
+              <Route path="/catalog" element={<Catalog />} />
+              <Route path="/contact" element={<Contact />} />
+              <Route path="/guest-rsvp/:eventId" element={<GuestRSVP />} />
+              <Route path="/guest-dashboard/:token" element={<GuestDashboard />} />
               <Route path="/admin-dashboard" element={<AdminDashboard />} />
               <Route path="/planner" element={<PlannerDashboard />} />
-
-              {/* Guest Experience */}
-              <Route path="/guest/:token" element={<GuestDashboard />} />
-
-              {/* Vendor Routes */}
-              <Route path="/vendor/onboarding" element={<VendorOnboarding />} />
-              <Route path="/vendor/:vendorId" element={<VendorProfile />} />
+              <Route path="/order/:orderId" element={<OrderTracking />} />
             </Routes>
-          </motion.main>
-          <Footer />
-        </div>
-      </Router>
-    </ErrorBoundary>
+          </AnimatePresence>
+        </main>
+        <Footer />
+      </div>
+    </Router>
   );
 }
 

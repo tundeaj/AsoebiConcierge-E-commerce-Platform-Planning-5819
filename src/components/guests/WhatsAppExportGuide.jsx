@@ -1,0 +1,1 @@
+// Since this content is now moved to WhatsAppOnboarding, we can delete this file

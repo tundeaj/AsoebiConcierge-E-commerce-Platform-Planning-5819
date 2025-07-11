@@ -1,8 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import App from './App.jsx';
+import App from './App';
 import './index.css';
-import AuthWrapper from './components/auth/AuthWrapper.jsx';
+import AuthWrapper from './components/auth/AuthWrapper';
 
 // Use JSX versions of hooks - prevent duplicate files issue
 import './hooks/useAuth.jsx';
